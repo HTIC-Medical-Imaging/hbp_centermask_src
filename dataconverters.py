@@ -2,14 +2,20 @@ import numpy as np
 
 from skimage.measure import regionprops, find_contours
 
-def to_coco(lbl,coloring):
-# if True:
+def to_cocorecord(lbl,coloring={}):
+    # for one <image , mask> pair : lbl is mask
     
+    nocoloring = len(coloring)==0
+          
     instances = []
     props = regionprops(lbl)
     for elt in props:
         r1,c1,r2,c2=elt.bbox
-        clr = 0 if elt.label not in coloring else coloring[elt.label]-1 # 0=>bg, 1=> islands, 2 onwards=>clumps
+        
+        if nocoloring: 
+            clr = 1
+        else:
+            clr = -1 if elt.label not in coloring else coloring[elt.label] # 0=>bg, 1=> islands, 2 onwards=>clumps
         # bound_img = find_boundaries(lbl==elt.label,mode='inner',connectivity=2)
         poly_rc = find_contours(lbl==elt.label)[0] # one instance should have only one polygon
         poly_xy = [np.flip(np.array(poly_rc),axis=1).tolist()]
@@ -29,17 +35,19 @@ def to_coco(lbl,coloring):
         
     return {
         'file_name':None, # filled by caller
-        # 'height':lbl.shape[0], 'width':lbl.shape[1],
+        'height':lbl.shape[0], 'width':lbl.shape[1],
         'image_id':None, # filled by caller
         'annotations':instances
     }
 
-def coco_records_to_json(records, categories_list):
+
+def cocorecords_to_json(records, categories_list):
+    # https://docs.aws.amazon.com/rekognition/latest/customlabels-dg/md-coco-overview.html
     coco = {
         "info":{},
         "images":[],
         "annotations":[],
-        "categories":[{'id':k+1,'name':v,'supercategory':'cell'} for k,v in enumerate(categories_list)]
+        "categories":[{'id':k,'name':v,'supercategory':'cell'} for k,v in enumerate(categories_list)]
     }
     
     ann_id_last = 0
@@ -50,7 +58,7 @@ def coco_records_to_json(records, categories_list):
             annot['image_id']=elt['image_id']
             annot['segmentation']=[np.array(annot['segmentation']).ravel().tolist()]
             annot['id']=ann_id_last
-            annot['category_id']=int(annot['category_id'])+1
+            # annot['category_id']=int(annot['category_id'])+1
             xmin,ymin,xmax,ymax = annot['bbox']
             annot['bbox']=(xmin,ymin,xmax-xmin,ymax-ymin)
             annot['bbox_mode']=1 # xywh
@@ -58,3 +66,18 @@ def coco_records_to_json(records, categories_list):
             ann_id_last+=1
     
     return coco
+
+
+def to_onehot(lbl_cl,max_label=8):
+    shp = lbl_cl.shape
+    dims = shp[:2]
+    if dims[0]==1:
+        dims = shp[1:3]
+    mx = lbl_cl.max()
+    max_label=max(max_label,mx)
+    oharray = np.zeros((dims[0],dims[1],max_label),dtype=np.uint8)
+    for lv in range(1,mx+1):
+        msk = lbl_cl==lv
+        oharray[...,lv-1]=msk
+    return oharray
+

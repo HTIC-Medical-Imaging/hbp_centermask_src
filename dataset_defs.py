@@ -22,7 +22,8 @@ class DSBdata:
 
         self.msklist = lambda n: glob.glob(self.datadir+'/'+self.imglist[n]+'/masks/*.png')
         
-        
+    def categories(self):
+        return ['bg',"isl"]+["cl%d"%x for x in range(1,8)]
     
     def __len__(self):
         return len(self.imglist)
@@ -42,8 +43,7 @@ class DSBdata:
         msk_lbl = np.zeros((shp[0],shp[1]),np.uint16)
 
 
-        for inst in range(len(maskpaths)):
-            msk = maskpaths[inst]
+        for inst,msk in enumerate(maskpaths):
             msk_i = imread(msk)
             msk_lbl[msk_i>0]=inst+1
 

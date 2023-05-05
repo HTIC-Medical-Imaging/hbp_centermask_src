@@ -127,21 +127,11 @@ def get_coloring(lbl, per_subgraph=True):
             
             
     lbl_cl[lbl_islands>0]=1
-    
+    for nd in islands:
+        coloring[nd]=1
+        
     return lbl_cl, msk_2c, islands, gr, coloring
 
 
-def to_onehot(lbl_cl,max_label=8):
-    shp = lbl_cl.shape
-    dims = shp[:2]
-    if dims[0]==1:
-        dims = shp[1:3]
-    mx = lbl_cl.max()
-    max_label=max(max_label,mx)
-    oharray = np.zeros((dims[0],dims[1],max_label),dtype=np.uint8)
-    for lv in range(1,mx+1):
-        msk = lbl_cl==lv
-        oharray[...,lv-1]=msk
-    return oharray
 
 
